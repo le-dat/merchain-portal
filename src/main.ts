@@ -1,11 +1,13 @@
 import 'dotenv/config';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { WorkerService } from './modules/reconciliation/worker.service';
 import {
   Logger,
   INestApplication,
   INestApplicationContext,
+  ValidationPipe,
+  ClassSerializerInterceptor,
 } from '@nestjs/common';
 import { UnknownAppRoleException } from './shared/exceptions/system.exceptions';
 
@@ -31,6 +33,16 @@ async function bootstrapApi(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();
 
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   logger.log(`API server listening on port ${port}`);
@@ -40,6 +52,16 @@ async function bootstrapApi(): Promise<INestApplication> {
 async function bootstrapAll(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   const workerService = app.get(WorkerService);
   workerService.run();

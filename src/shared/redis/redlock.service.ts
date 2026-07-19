@@ -72,7 +72,9 @@ export class RedlockService implements OnModuleInit, OnModuleDestroy {
     }
     for (const client of this.clients) {
       try {
-        await client.quit();
+        if (client.isOpen) {
+          await client.quit();
+        }
       } catch (err) {
         this.logger.error(
           'Error during redis client quit',
