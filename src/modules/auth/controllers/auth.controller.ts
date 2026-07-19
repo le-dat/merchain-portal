@@ -16,6 +16,9 @@ import { GetUser } from '../decorators/get-user.decorator';
 
 @Controller('auth')
 export class AuthController {
+  private readonly REFRESH_TOKEN_COOKIE_NAME = 'refresh_token';
+  private readonly REFRESH_TOKEN_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 1 week
+
   constructor(private readonly authService: AuthService) {}
 
   @Public()
@@ -28,11 +31,11 @@ export class AuthController {
     const user = await this.authService.validateUser(loginDto);
     const tokens = await this.authService.login(user);
 
-    res.cookie('refresh_token', tokens.refresh_token, {
+    res.cookie(this.REFRESH_TOKEN_COOKIE_NAME, tokens.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: this.REFRESH_TOKEN_COOKIE_MAX_AGE,
     });
 
     return { access_token: tokens.access_token };
@@ -46,18 +49,18 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const cookies = req.cookies as Record<string, unknown> | undefined;
-    const refreshToken = cookies?.['refresh_token'];
+    const refreshToken = cookies?.[this.REFRESH_TOKEN_COOKIE_NAME];
     if (typeof refreshToken !== 'string') {
       throw new UnauthorizedException('Refresh token not found');
     }
 
     const tokens = await this.authService.refresh(refreshToken);
 
-    res.cookie('refresh_token', tokens.refresh_token, {
+    res.cookie(this.REFRESH_TOKEN_COOKIE_NAME, tokens.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: this.REFRESH_TOKEN_COOKIE_MAX_AGE,
     });
 
     return { access_token: tokens.access_token };
@@ -70,7 +73,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     await this.authService.logout(userId);
-    res.clearCookie('refresh_token');
+    res.clearCookie(this.REFRESH_TOKEN_COOKIE_NAME);
     return { message: 'Logged out successfully' };
   }
 }
