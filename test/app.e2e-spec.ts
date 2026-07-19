@@ -11,11 +11,14 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { DatabaseConfigException } from '../src/shared/exceptions/system.exceptions';
 
+import { Public } from '../src/modules/auth/decorators/public.decorator';
+
 @Controller('test-exceptions')
+@Public()
 class TestExceptionsController {
   @Get('http')
   triggerHttpError() {
-    throw new BadRequestException('Yêu cầu không hợp lệ');
+    throw new BadRequestException('Bad request');
   }
 
   @Get('system')
@@ -25,7 +28,7 @@ class TestExceptionsController {
 
   @Get('generic')
   triggerGenericError() {
-    throw new Error('Lỗi kết nối DB thô');
+    throw new Error('Bad DB connection');
   }
 }
 
@@ -64,7 +67,7 @@ describe('Exceptions & Health (e2e)', () => {
           timestamp: string;
         };
         expect(body.statusCode).toBe(400);
-        expect(body.message).toBe('Yêu cầu không hợp lệ');
+        expect(body.message).toBe('Bad request');
         expect(body.timestamp).toBeDefined();
       });
   });
@@ -92,7 +95,7 @@ describe('Exceptions & Health (e2e)', () => {
       .expect((res: request.Response) => {
         const body = res.body as { statusCode: number; message: string };
         expect(body.statusCode).toBe(500);
-        expect(body.message).toBe('Lỗi kết nối DB thô');
+        expect(body.message).toBe('Bad DB connection');
       });
   });
 

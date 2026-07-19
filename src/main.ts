@@ -10,6 +10,7 @@ import {
   ClassSerializerInterceptor,
 } from '@nestjs/common';
 import { UnknownAppRoleException } from './shared/exceptions/system.exceptions';
+import cookieParser from 'cookie-parser';
 
 const logger = new Logger('Bootstrap');
 
@@ -33,6 +34,9 @@ async function bootstrapApi(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();
 
+  app.use(cookieParser());
+  app.setGlobalPrefix('api', { exclude: ['health'] });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -52,6 +56,9 @@ async function bootstrapApi(): Promise<INestApplication> {
 async function bootstrapAll(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();
+
+  app.use(cookieParser());
+  app.setGlobalPrefix('api', { exclude: ['health'] });
 
   app.useGlobalPipes(
     new ValidationPipe({

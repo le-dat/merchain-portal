@@ -91,3 +91,15 @@ model Transaction {
   @@index([rawPayload(ops: JsonbPathOps)], type: Gin, map: "idx_transactions_raw_payload")
   @@map("transactions")
 }
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  password     String   @db.VarChar(255)
+  role         String   @default("ACCOUNTANT") @db.VarChar(30)
+  refreshToken String?  @map("refresh_token") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([email], map: "idx_users_email")
+  @@map("users")
+}
