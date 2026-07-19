@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Order {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String   @unique @db.VarChar(50)
+  amount     Decimal  @db.Decimal(15, 2)
+  currency   String   @default("VND") @db.VarChar(3)
+  status     String   @default("PENDING") @db.VarChar(30)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  transactions Transaction[]
+
+  @@index([code], map: "idx_orders_code")
+  @@map("orders")
+}
+
+model BankStatement {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referenceNo   String   @unique @map("reference_no") @db.VarChar(100)
+  amount        Decimal  @db.Decimal(15, 2)
+  currency      String   @default("VND") @db.VarChar(3)
+  bankTimestamp DateTime @map("bank_timestamp") @db.Timestamptz
+  description   String   @db.Text
+  status        String   @default("UNMATCHED") @db.VarChar(30)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  payouts Payout[]
+
+  @@index([status], map: "idx_bank_statements_status")
+  @@map("bank_statements")
+}
+
+model Payout {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payoutCode      String   @unique @map("payout_code") @db.VarChar(100)
+  gateway         String   @db.VarChar(50)
+  amount          Decimal  @db.Decimal(15, 2)
+  currency        String   @default("VND") @db.VarChar(3)
+  processingFee   Decimal  @default(0.00) @map("processing_fee") @db.Decimal(15, 2)
+  bankAccountNo   String   @map("bank_account_no") @db.VarChar(50)
+  status          String   @default("TRANSIT") @db.VarChar(30)
+  bankStatementId String?  @map("bank_statement_id") @db.Uuid
+  bankTimestamp   DateTime? @map("bank_timestamp") @db.Timestamptz
+  rawPayload      Json     @map("raw_payload")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  bankStatement BankStatement? @relation(fields: [bankStatementId], references: [id])
+  transactions  Transaction[]
+
+  @@index([status], map: "idx_payouts_status")
+  @@map("payouts")
+}
+
+model Transaction {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transactionCode     String   @map("transaction_code") @db.VarChar(100)
+  gateway             String   @db.VarChar(50)
+  type                String   @default("PAYMENT") @db.VarChar(30)
+  amount              Decimal  @db.Decimal(15, 2)
+  currency            String   @default("VND") @db.VarChar(3)
+  processingFee       Decimal  @default(0.00) @map("processing_fee") @db.Decimal(15, 2)
+  netAmount           Decimal  @map("net_amount") @db.Decimal(15, 2)
+  exchangeRate        Decimal  @default(1.000000) @map("exchange_rate") @db.Decimal(15, 6)
+  fxGainLoss          Decimal  @default(0.00) @map("fx_gain_loss") @db.Decimal(15, 2)
+  bankTimestamp       DateTime @map("bank_timestamp") @db.Timestamptz
+  status              String   @db.VarChar(30)
+  orderId             String?  @map("order_id") @db.Uuid
+  parentTransactionId String?  @map("parent_transaction_id") @db.Uuid
+  payoutId            String?  @map("payout_id") @db.Uuid
+  rawPayload          Json     @map("raw_payload")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  order             Order?        @relation(fields: [orderId], references: [id])
+  payout            Payout?       @relation(fields: [payoutId], references: [id])
+  parentTransaction Transaction?  @relation("ParentChild", fields: [parentTransactionId], references: [id])
+  childTransactions Transaction[] @relation("ParentChild")
+
+  @@unique([transactionCode, gateway, type], name: "unique_transaction_gateway_type")
+  @@index([transactionCode, gateway], map: "idx_transactions_code_gateway")
+  @@index([status], map: "idx_transactions_status")
+  @@index([payoutId], map: "idx_transactions_payout_id")
+  @@index([rawPayload(ops: JsonbPathOps)], type: Gin, map: "idx_transactions_raw_payload")
+  @@map("transactions")
+}
