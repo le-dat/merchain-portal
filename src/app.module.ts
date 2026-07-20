@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { HealthController } from './health.controller';
 import { DatabaseModule } from './shared/database/database.module';
 import { RedisModule } from './shared/redis/redis.module';
+import { QueueModule } from './shared/queue/queue.module';
 import { ReconciliationModule } from './modules/reconciliation/reconciliation.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
@@ -10,7 +11,13 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
 
 @Module({
-  imports: [DatabaseModule, RedisModule, ReconciliationModule, AuthModule],
+  imports: [
+    DatabaseModule,
+    RedisModule,
+    QueueModule,
+    ReconciliationModule,
+    AuthModule,
+  ],
   controllers: [HealthController],
   providers: [
     {
