@@ -31,7 +31,7 @@ async function bootstrapWorker(): Promise<INestApplicationContext> {
 }
 
 async function bootstrapApi(): Promise<INestApplication> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.enableShutdownHooks();
 
   app.use(cookieParser());
@@ -54,7 +54,7 @@ async function bootstrapApi(): Promise<INestApplication> {
 }
 
 async function bootstrapAll(): Promise<INestApplication> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.enableShutdownHooks();
 
   app.use(cookieParser());
