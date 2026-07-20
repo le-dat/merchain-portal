@@ -5,6 +5,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ReconcileBatchHandler } from './application/commands/handlers/reconcile-batch.handler';
 import { ProcessWebhookHandler } from './application/commands/handlers/process-webhook.handler';
 import { ReconcileTransactionHandler } from './application/commands/handlers/reconcile-transaction.handler';
+import { MatchPayoutHandler } from './application/commands/handlers/match-payout.handler';
 
 // Infrastructure - Gateways
 import { StripeClientService } from './infrastructure/gateways/stripe.client';
@@ -26,6 +27,7 @@ import { ReconciliationConsumer } from './infrastructure/queue-consumers/reconci
 // Presentation Controllers & Webhooks
 import { ReconciliationController } from './presentation/controllers/reconciliation.controller';
 import { DashboardController } from './presentation/controllers/dashboard.controller';
+import { PayoutController } from './presentation/controllers/payout.controller';
 import { StripeWebhookController } from './presentation/webhooks/stripe-webhook.controller';
 import { VNPayIpnController } from './presentation/webhooks/vnpay-ipn.controller';
 
@@ -40,6 +42,7 @@ import { RECONCILIATION_QUEUE } from '../../shared/queue/queue.constants';
   controllers: [
     ReconciliationController,
     DashboardController,
+    PayoutController,
     StripeWebhookController,
     VNPayIpnController,
   ],
@@ -48,6 +51,7 @@ import { RECONCILIATION_QUEUE } from '../../shared/queue/queue.constants';
     ReconcileBatchHandler,
     ProcessWebhookHandler,
     ReconcileTransactionHandler,
+    MatchPayoutHandler,
 
     // Infrastructure - Gateways
     StripeClientService,
@@ -73,6 +77,6 @@ import { RECONCILIATION_QUEUE } from '../../shared/queue/queue.constants';
     // Legacy worker service
     WorkerService,
   ],
-  exports: [WorkerService, ReconcileTransactionHandler],
+  exports: [WorkerService, ReconcileTransactionHandler, MatchPayoutHandler],
 })
 export class ReconciliationModule {}
