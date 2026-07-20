@@ -4,6 +4,7 @@ import { BullModule } from '@nestjs/bullmq';
 // Application Commands
 import { ReconcileBatchHandler } from './application/commands/handlers/reconcile-batch.handler';
 import { ProcessWebhookHandler } from './application/commands/handlers/process-webhook.handler';
+import { ReconcileTransactionHandler } from './application/commands/handlers/reconcile-transaction.handler';
 
 // Infrastructure - Gateways
 import { StripeClientService } from './infrastructure/gateways/stripe.client';
@@ -46,6 +47,7 @@ import { RECONCILIATION_QUEUE } from '../../shared/queue/queue.constants';
     // Application Command Handlers
     ReconcileBatchHandler,
     ProcessWebhookHandler,
+    ReconcileTransactionHandler,
 
     // Infrastructure - Gateways
     StripeClientService,
@@ -71,6 +73,6 @@ import { RECONCILIATION_QUEUE } from '../../shared/queue/queue.constants';
     // Legacy worker service
     WorkerService,
   ],
-  exports: [WorkerService],
+  exports: [WorkerService, ReconcileTransactionHandler],
 })
 export class ReconciliationModule {}
