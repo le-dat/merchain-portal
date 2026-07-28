@@ -80,31 +80,52 @@ export class ProcessWebhookHandler {
 
     const netAmount = amount - processingFee;
 
-    // 4. Save transaction
-    const newTxn = await this.prisma.transaction.create({
-      data: {
-        transactionCode,
-        gateway,
-        type,
-        amount,
-        currency,
-        processingFee,
-        netAmount,
-        bankTimestamp,
-        status,
-        rawPayload: rawPayload as unknown as Prisma.InputJsonValue,
-        parentTransactionId,
-        orderId,
-      },
-    });
+    // 4. Save transaction with atomic idempotency error handling
+    try {
+      const newTxn = await this.prisma.transaction.create({
+        data: {
+          transactionCode,
+          gateway,
+          type,
+          amount,
+          currency,
+          processingFee,
+          netAmount,
+          bankTimestamp,
+          status,
+          rawPayload: rawPayload as unknown as Prisma.InputJsonValue,
+          parentTransactionId,
+          orderId,
+        },
+      });
 
-    this.logger.log(
-      `Successfully processed webhook transaction: [${gateway}] ${transactionCode} (${type}) -> ID: ${newTxn.id}`,
-    );
+      this.logger.log(
+        `Successfully processed webhook transaction: [${gateway}] ${transactionCode} (${type}) -> ID: ${newTxn.id}`,
+      );
 
-    return {
-      status: 'PROCESSED',
-      transactionId: newTxn.id,
-    };
+      return {
+        status: 'PROCESSED',
+        transactionId: newTxn.id,
+      };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const existingTxn = await this.prisma.transaction.findFirst({
+          where: { transactionCode, gateway, type },
+        });
+        if (existingTxn) {
+          this.logger.log(
+            `Webhook transaction processed concurrently (Caught P2002): [${gateway}] ${transactionCode} (${type})`,
+          );
+          return {
+            status: 'ALREADY_PROCESSED',
+            transactionId: existingTxn.id,
+          };
+        }
+      }
+      throw err;
+    }
   }
 }

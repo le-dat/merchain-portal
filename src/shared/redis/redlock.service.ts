@@ -105,6 +105,35 @@ export class RedlockService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Safely execute an operation within a Redlock distributed lock.
+   * Handles acquire and guaranteed release in a try-finally block.
+   */
+  async executeWithLock<T>(
+    resources: string[],
+    ttl: number,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const lock = await this.acquire(resources, ttl);
+    try {
+      return await fn();
+    } finally {
+      if (lock) {
+        try {
+          await this.release(lock);
+          this.logger.debug(
+            `Released Redlock for resources: ${resources.join(', ')}`,
+          );
+        } catch (err) {
+          this.logger.error(
+            `Error releasing Redlock for ${resources.join(', ')}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+    }
+  }
+
+  /**
    * Lấy Redis Client chính để thực hiện các lệnh cache thông thường (mặc định lấy client đầu tiên)
    */
   getClient(index = 0): RedisClientType {

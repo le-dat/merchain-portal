@@ -45,22 +45,8 @@ export class ReconcileTransactionHandler {
 
     const orderRecord = txnRecord.order;
     const lockResource = orderRecord ? `lock:order:${orderRecord.code}` : null;
-    let lock: unknown = null;
 
-    // 2. Acquire Redlock if an associated Order exists to prevent race condition
-    if (lockResource) {
-      try {
-        lock = await this.redlockService.acquire([lockResource], 5000);
-        this.logger.debug(`Acquired Redlock for resource: ${lockResource}`);
-      } catch (err) {
-        this.logger.warn(
-          `Failed to acquire Redlock for ${lockResource}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        throw new RedlockAcquisitionDomainException(lockResource);
-      }
-    }
-
-    try {
+    const reconcileAction = async (): Promise<ReconcileTransactionResult> => {
       // Convert Prisma models to Pure Domain Entities
       const txnEntity = new TransactionEntity(
         txnRecord.id,
@@ -128,18 +114,24 @@ export class ReconcileTransactionHandler {
         orderId: orderRecord?.id ?? null,
         matchResult,
       };
-    } finally {
-      // 5. Guaranteed Redlock Release in finally block
-      if (lock) {
-        try {
-          await this.redlockService.release(lock);
-          this.logger.debug(`Released Redlock for resource: ${lockResource}`);
-        } catch (err) {
-          this.logger.error(
-            `Error releasing Redlock for ${lockResource}: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        }
+    };
+
+    // 2. Execute within Redlock if associated Order exists
+    if (lockResource) {
+      try {
+        return await this.redlockService.executeWithLock(
+          [lockResource],
+          5000,
+          reconcileAction,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Failed to acquire or execute within Redlock for ${lockResource}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        throw new RedlockAcquisitionDomainException(lockResource);
       }
     }
+
+    return await reconcileAction();
   }
 }
